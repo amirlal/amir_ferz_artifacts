@@ -5,6 +5,8 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from activation import LegacyTransmute
 import matplotlib.pyplot as plt
+from selden_vault import SeldenVault
+
 
 BATCH_SIZE = 64
 EPOCHS = 5
