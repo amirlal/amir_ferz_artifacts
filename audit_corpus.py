@@ -7,6 +7,13 @@ from collections import Counter
 from selden_vault import SeldenVault
 vault = SeldenVault(protocol_name="EntropyAudit", steward="Amir")
 
+vault.log_signal(
+    signal_type="text_entropy",
+    fidelity_score=entropy,
+    decay_rate=kl,
+    notes=f"Line {i+1}"
+)
+vault.export("selden_entropy_log.json")
 
 def compute_entropy(tokens):
     counts = Counter(tokens)
