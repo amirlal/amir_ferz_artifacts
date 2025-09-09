@@ -6,6 +6,112 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import time
 
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
+import time
+
+# Import custom activations
+from activation import ASCEP, NEOQEP, YRDBDE
+
+class SimpleNet(nn.Module):
+    def __init__(self, activation_fn):
+        super().__init__()
+        self.fc1 = nn.Linear(784, 128)
+        self.act1 = activation_fn
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = x.view(-1, 784)
+        x = self.act1(self.fc1(x))
+        return self.fc2(x)
+
+def train_and_test(name, activation_fn):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('.', train=True, download=True, transform=transform),
+        batch_size=64, shuffle=True
+    )
+    test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('.', train=False, transform=transform),
+        batch_size=64, shuffle=False
+    )
+
+    model = SimpleNet(activation_fn).to(device)
+    optimizer = optim.Adam(model.parameters())
+    criterion = nn.CrossEntropyLoss()
+
+    start = time.time()
+    for epoch in range(5):
+        model.train()
+        total_loss = 0
+        for data, target in train_loader:
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        print(f"{name} Epoch {epoch+1} Loss: {total_loss:.4f}")
+
+    model.eval()
+    correct = 0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            pred = output.argmax(dim=1)
+            correct += pred.eq(target).sum().item()
+
+    accuracy = correct / len(test_loader.dataset)
+    duration = time.time() - start
+    return accuracy, total_loss, duration
+
+# Run all benchmarks
+activations = {
+    "ReLU": nn.ReLU(),
+    "GELU": nn.GELU(),
+    "Swish": nn.SiLU(),
+    "Sigmoid": nn.Sigmoid(),
+    "ASCEP": ASCEP(alpha=1.0, beta=0.3),
+    "NEOQEP": NEOQEP(gamma=0.8),
+    "YRD-BDE": YRDBDE(delta=0.6)
+}
+
+results = {}
+for name, fn in activations.items():
+    print(f"\n🔍 Benchmarking {name}")
+    acc, loss, time_taken = train_and_test(name, fn)
+    results[name] = {"accuracy": acc, "loss": loss, "time": time_taken}
+
+# Plot results
+labels = list(results.keys())
+accuracies = [results[k]["accuracy"] for k in labels]
+losses = [results[k]["loss"] for k in labels]
+times = [results[k]["time"] for k in labels]
+
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 3, 1)
+plt.bar(labels, accuracies)
+plt.title("Accuracy")
+
+plt.subplot(1, 3, 2)
+plt.bar(labels, losses)
+plt.title("Total Loss")
+
+plt.subplot(1, 3, 3)
+plt.bar(labels, times)
+plt.title("Training Time (s)")
+
+plt.tight_layout()
+plt.savefig("custom_activation_benchmark.png")
+print("\n✅ Benchmark complete. Results saved to custom_activation_benchmark.png")
+
+
 # 🔹 ASCUP Activation Function
 class ASCUP(nn.Module):
     def __init__(self, alpha=1.0, beta=0.5, gamma=0.7):
@@ -113,4 +219,24 @@ plt.title("Training Time (s)")
 
 plt.tight_layout()
 plt.savefig("ascup_benchmark_results.png")
+class ASCEP(nn.Module):
+    def __init__(self, alpha=1.0, beta=0.3):
+        super().__init__()
+        self.alpha = alpha
+        self.beta = beta
+
+    def forward(self, x):
+        compress = torch.tanh(self.alpha * x)
+        preserve = self.beta * torch.exp(-x**2)
+        return x * compress + preserve
+class NEOQEP(nn.Module):
+    def __init__(self, gamma=0.8):
+        super().__init__()
+        self.gamma = gamma
+
+    def forward(self, x):
+        pulse = torch.sin(self.gamma * x)
+        entropy_gate = torch.sigmoid(x)
+        return x * pulse * entropy_gate
+
 print("\n✅ Benchmark complete. Results saved to ascup_benchmark_results.png")
