@@ -81,3 +81,19 @@ if __name__ == "__main__":
     plt.title("Activation Function Comparison")
     plt.savefig("activation_comparison.png")
     print("Saved plot to activation_comparison.png")
+vault = SeldenVault(protocol_name=name, steward="Amir")
+vault.log_signal(
+    signal_type="activation_accuracy",
+    fidelity_score=acc,
+    decay_rate=1 - acc,
+    notes="MNIST test accuracy"
+)
+vault.export(f"selden_{name.lower()}_log.json")
+vault = SeldenVault(protocol_name="ScenarioModel", steward="Amir")
+vault.log_signal(
+    signal_type="scenario_auc",
+    fidelity_score=auc_score,
+    decay_rate=1 - auc_score,
+    notes="Toy run on infrastructure dataset"
+)
+vault.export("selden_scenario_log.json")
