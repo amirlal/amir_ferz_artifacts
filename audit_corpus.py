@@ -4,6 +4,9 @@ import math
 import argparse
 import csv
 from collections import Counter
+from selden_vault import SeldenVault
+vault = SeldenVault(protocol_name="EntropyAudit", steward="Amir")
+
 
 def compute_entropy(tokens):
     counts = Counter(tokens)
